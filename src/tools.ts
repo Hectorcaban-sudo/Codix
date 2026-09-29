@@ -4,7 +4,7 @@ import { SolutionIndex } from './indexer';
 import { ToolSchema } from './llmClient';
 import { AgentConfig } from './config';
 
-export const PROPOSED_SCHEME = 'solution-agent-proposed';
+export const PROPOSED_SCHEME = 'codix-proposed';
 
 /** Holds proposed file contents so they can be shown in a diff editor. */
 export class ProposedContentProvider implements vscode.TextDocumentContentProvider {
@@ -152,7 +152,7 @@ async function confirmChange(ctx: ToolContext, uri: vscode.Uri, newContent: stri
   const left = isNew ? vscode.Uri.from({ scheme: PROPOSED_SCHEME, path: uri.path + '.empty' }) : uri;
   await vscode.commands.executeCommand('vscode.diff', left, proposedUri, `${rel} ↔ Proposed${isNew ? ' (new file)' : ''}`, { preview: true });
   const choice = await vscode.window.showInformationMessage(
-    `Solution Agent wants to ${isNew ? 'create' : 'edit'} ${rel}${explanation ? `: ${explanation}` : ''}`,
+    `Codix wants to ${isNew ? 'create' : 'edit'} ${rel}${explanation ? `: ${explanation}` : ''}`,
     { modal: false },
     'Accept',
     'Reject'
@@ -248,8 +248,8 @@ export async function runTool(name: string, rawArgs: string, ctx: ToolContext): 
       }
 
       case 'run_command': {
-        if (!ctx.cfg.allowTerminalCommands) return 'Error: running commands is disabled (solutionAgent.allowTerminalCommands).';
-        const ok = await vscode.window.showWarningMessage(`Solution Agent wants to run:\n${args.command}`, { modal: true }, 'Run');
+        if (!ctx.cfg.allowTerminalCommands) return 'Error: running commands is disabled (codix.allowTerminalCommands).';
+        const ok = await vscode.window.showWarningMessage(`Codix wants to run:\n${args.command}`, { modal: true }, 'Run');
         if (ok !== 'Run') return 'User declined to run the command.';
         return await new Promise<string>((resolve) => {
           const child = cp.exec(args.command, { cwd: rootUri().fsPath, timeout: 10 * 60_000, maxBuffer: 20 * 1024 * 1024 }, (err, stdout, stderr) => {

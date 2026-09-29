@@ -1,6 +1,6 @@
-# Solution Agent for VS Code
+# Codix
 
-A Continue-style AI coding agent that **reads your whole solution**, talks to an **internal OpenAI-compatible server**, and supports **custom headers + client certificates (mTLS)** for authentication.
+Codix is a Continue-style AI coding agent for VS Code that **reads your whole solution**, talks to an **internal OpenAI-compatible server**, and supports **custom headers + client certificates (mTLS)** for authentication.
 
 ## What it does
 
@@ -16,8 +16,8 @@ A Continue-style AI coding agent that **reads your whole solution**, talks to an
 ```bash
 npm install
 npm run compile
-npm run package          # produces solution-agent-0.1.0.vsix
-code --install-extension solution-agent-0.1.0.vsix
+npm run package          # produces codix-0.1.0.vsix
+code --install-extension codix-0.1.0.vsix
 ```
 
 Or open the folder in VS Code and press **F5** to run it in an Extension Development Host.
@@ -28,14 +28,14 @@ Add to your **User** `settings.json` (Ctrl+Shift+P → *Preferences: Open User S
 
 ```jsonc
 {
-  "solutionAgent.apiBase": "https://llm.internal.company.com/v1",
-  "solutionAgent.model": "gpt-4o",
-  "solutionAgent.contextWindowTokens": 128000,
+  "codix.apiBase": "https://llm.internal.company.com/v1",
+  "codix.model": "gpt-4o",
+  "codix.contextWindowTokens": 128000,
 
-  "solutionAgent.requestOptions": {
+  "codix.requestOptions": {
     "headers": {
       "X-Api-Gateway-Key": "${env:LLM_GATEWAY_KEY}",
-      "X-Client-Id": "vscode-solution-agent"
+      "X-Client-Id": "vscode-codix"
     },
     "caBundlePath": "C:/certs/company-root-ca.pem",
     "clientCertificate": {
@@ -48,7 +48,7 @@ Add to your **User** `settings.json` (Ctrl+Shift+P → *Preferences: Open User S
 }
 ```
 
-Then run **Solution Agent: Set API Key** if your server also uses a bearer token (stored in VS Code SecretStorage, sent as `Authorization: Bearer <key>`), and **Solution Agent: Test Connection**.
+Then run **Codix: Set API Key** if your server also uses a bearer token (stored in VS Code SecretStorage, sent as `Authorization: Bearer <key>`), and **Codix: Test Connection**.
 
 ### Options (mirrors Continue's `requestOptions`)
 
@@ -79,7 +79,7 @@ Supported transports: **stdio**, **Streamable HTTP**, and legacy **SSE** (tried 
 ### Configure in settings
 
 ```jsonc
-"solutionAgent.mcpServers": [
+"codix.mcpServers": [
   // Local stdio server
   {
     "name": "filesystem-docs",
@@ -104,7 +104,7 @@ Supported transports: **stdio**, **Streamable HTTP**, and legacy **SSE** (tried 
       "clientCertificate": { "cert": "C:/certs/me.crt.pem", "key": "C:/certs/me.key.pem", "passphrase": "${env:LLM_CERT_PASS}" }
     }
   },
-  // Or reuse solutionAgent.requestOptions (headers + certs) as-is
+  // Or reuse codix.requestOptions (headers + certs) as-is
   { "name": "internal-search", "url": "https://search-mcp.internal/mcp", "useGlobalRequestOptions": true }
 ]
 ```
@@ -123,13 +123,13 @@ Values support `${env:VAR}`, `${workspaceFolder}`, and `${input:id}`. `${input:i
 
 ### Workspace config files
 
-In trusted workspaces the extension also reads **`.vscode/mcp.json`** (VS Code format, `{"servers": {...}}`) and **`.continue/mcpServers/*.json`** (Continue / Claude Desktop format, `{"mcpServers": {...}}`), so existing configs work unchanged. You're asked once before a workspace's servers start, and again whenever the file changes. Turn off with `solutionAgent.mcpLoadWorkspaceConfigs`.
+In trusted workspaces the extension also reads **`.vscode/mcp.json`** (VS Code format, `{"servers": {...}}`) and **`.continue/mcpServers/*.json`** (Continue / Claude Desktop format, `{"mcpServers": {...}}`), so existing configs work unchanged. You're asked once before a workspace's servers start, and again whenever the file changes. Turn off with `codix.mcpLoadWorkspaceConfigs`.
 
 ### Approvals and UI
 
-- `solutionAgent.mcpToolApproval`: `ask` (default) shows each call's arguments with **Allow** / **Allow for this session**; `auto` never asks.
+- `codix.mcpToolApproval`: `ask` (default) shows each call's arguments with **Allow** / **Allow for this session**; `auto` never asks.
 - Chat toolbar: **⚡** shows server status (restart a server, reconnect all, open the log); **/** inserts an MCP prompt.
-- Commands: *Show MCP Servers*, *Reconnect MCP Servers*, *Insert MCP Prompt*. Server stderr and calls are logged in the **Solution Agent MCP** output channel.
+- Commands: *Show MCP Servers*, *Reconnect MCP Servers*, *Insert MCP Prompt*. Server stderr and calls are logged in the **Codix MCP** output channel.
 
 ## Other settings
 

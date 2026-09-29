@@ -4,7 +4,7 @@ import { SolutionIndex } from './indexer';
 import { McpManager } from './mcpManager';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewId = 'solutionAgent.chat';
+  public static readonly viewId = 'codix.chat';
   private view?: vscode.WebviewView;
   private abort?: AbortController;
 
@@ -14,7 +14,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   prefill(text: string) {
-    vscode.commands.executeCommand('solutionAgent.chat.focus');
+    vscode.commands.executeCommand('codix.chat.focus');
     this.post({ type: 'prefill', text });
   }
 
@@ -27,9 +27,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         case 'send': return this.send(msg.text);
         case 'stop': this.abort?.abort(); return;
         case 'newChat': return this.newChat();
-        case 'reindex': return vscode.commands.executeCommand('solutionAgent.reindex');
-        case 'mcp': return vscode.commands.executeCommand('solutionAgent.mcpServers');
-        case 'mcpPrompt': return vscode.commands.executeCommand('solutionAgent.mcpPrompt');
+        case 'reindex': return vscode.commands.executeCommand('codix.reindex');
+        case 'mcp': return vscode.commands.executeCommand('codix.mcpServers');
+        case 'mcpPrompt': return vscode.commands.executeCommand('codix.mcpPrompt');
         case 'insert': {
           const ed = vscode.window.activeTextEditor;
           if (ed) await ed.edit((b) => b.replace(ed.selection, msg.code));
@@ -54,7 +54,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const sel = ed.selection;
     const code = ed.document.getText(sel);
     this.agent.pin([rel.replace(/\\/g, '/')]);
-    await vscode.commands.executeCommand('solutionAgent.chat.focus');
+    await vscode.commands.executeCommand('codix.chat.focus');
     this.post({ type: 'prefill', text: `In ${rel} lines ${sel.start.line + 1}-${sel.end.line + 1}:\n\`\`\`\n${code}\n\`\`\`\n` });
   }
 

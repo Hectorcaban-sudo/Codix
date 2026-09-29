@@ -24,9 +24,9 @@ export interface McpServerConfig {
   cwd?: string;
   url?: string;
   headers?: Record<string, string>;
-  /** TLS/header options for remote servers, same shape as solutionAgent.requestOptions. */
+  /** TLS/header options for remote servers, same shape as codix.requestOptions. */
   requestOptions?: Partial<RequestOptions>;
-  /** Reuse solutionAgent.requestOptions (headers + certs) for this server. */
+  /** Reuse codix.requestOptions (headers + certs) for this server. */
   useGlobalRequestOptions?: boolean;
   disabled?: boolean;
   /** true = never ask; or a list of tool names that never need approval. */
@@ -66,7 +66,7 @@ export class McpManager implements vscode.Disposable {
   private sessionApprovals = new Set<string>();
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange = this._onDidChange.event;
-  readonly output = vscode.window.createOutputChannel('Solution Agent MCP');
+  readonly output = vscode.window.createOutputChannel('Codix MCP');
 
   constructor(private context: vscode.ExtensionContext) {}
 
@@ -92,10 +92,10 @@ export class McpManager implements vscode.Disposable {
 
   async loadConfigs(): Promise<McpServerConfig[]> {
     const out: McpServerConfig[] = [];
-    const setting = vscode.workspace.getConfiguration('solutionAgent').get<any>('mcpServers');
+    const setting = vscode.workspace.getConfiguration('codix').get<any>('mcpServers');
     out.push(...this.fromContainer(setting ?? [], 'settings'));
 
-    const loadWs = vscode.workspace.getConfiguration('solutionAgent').get<boolean>('mcpLoadWorkspaceConfigs') ?? true;
+    const loadWs = vscode.workspace.getConfiguration('codix').get<boolean>('mcpLoadWorkspaceConfigs') ?? true;
     if (loadWs && vscode.workspace.isTrusted) {
       for (const folder of vscode.workspace.workspaceFolders ?? []) {
         const candidates = [vscode.Uri.joinPath(folder.uri, '.vscode', 'mcp.json')];
@@ -170,7 +170,7 @@ export class McpManager implements vscode.Disposable {
     // ${input:id} (VS Code mcp.json style): prompt once, keep in SecretStorage.
     const inputs = [...v.matchAll(/\$\{input:([^}]+)\}/g)].map((m) => m[1]);
     for (const id of inputs) {
-      const key = `solutionAgent.mcpInput.${id}`;
+      const key = `codix.mcpInput.${id}`;
       let val = await this.context.secrets.get(key);
       if (val === undefined) {
         val = await vscode.window.showInputBox({ prompt: `MCP value for "${id}"`, password: true, ignoreFocusOut: true });
@@ -179,7 +179,7 @@ export class McpManager implements vscode.Disposable {
       }
       v = v.split(`\${input:${id}}`).join(val);
     }
-    const apiKey = await this.context.secrets.get('solutionAgent.apiKey');
+    const apiKey = await this.context.secrets.get('codix.apiKey');
     return interpolate(v, apiKey);
   }
 
@@ -191,7 +191,7 @@ export class McpManager implements vscode.Disposable {
 
   private async makeFetch(cfg: McpServerConfig) {
     const ro: Partial<RequestOptions> = { ...(cfg.useGlobalRequestOptions ? getConfig().requestOptions : {}), ...(cfg.requestOptions ?? {}) };
-    const apiKey = await this.context.secrets.get('solutionAgent.apiKey');
+    const apiKey = await this.context.secrets.get('codix.apiKey');
     const tlsOpts = buildTlsOptions(ro, apiKey);
     const headers = {
       ...interpolateHeaders(ro.headers, apiKey),
@@ -240,7 +240,7 @@ export class McpManager implements vscode.Disposable {
     s.error = undefined;
     this._onDidChange.fire();
     const attempt = async (forceSse: boolean) => {
-      const client = new Client({ name: 'solution-agent', version: '0.2.0' }, { capabilities: {} });
+      const client = new Client({ name: 'codix', version: '0.2.0' }, { capabilities: {} });
       const transport = await this.createTransport(s.cfg, forceSse);
       await withTimeout(client.connect(transport), s.cfg.timeoutMs ?? 30000, `connect to ${name}`);
       return { client, transport };
@@ -345,7 +345,7 @@ export class McpManager implements vscode.Disposable {
 
   private async approve(server: string, tool: string, args: any): Promise<boolean> {
     const s = this.servers.get(server)!;
-    const mode = vscode.workspace.getConfiguration('solutionAgent').get<string>('mcpToolApproval') ?? 'ask';
+    const mode = vscode.workspace.getConfiguration('codix').get<string>('mcpToolApproval') ?? 'ask';
     if (mode === 'auto') return true;
     const aa = s.cfg.autoApprove;
     if (aa === true || (Array.isArray(aa) && aa.includes(tool))) return true;

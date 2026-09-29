@@ -32,10 +32,10 @@ export interface AgentConfig {
   systemPromptExtra: string;
 }
 
-export const SECRET_API_KEY = 'solutionAgent.apiKey';
+export const SECRET_API_KEY = 'codix.apiKey';
 
 export function getConfig(): AgentConfig {
-  const c = vscode.workspace.getConfiguration('solutionAgent');
+  const c = vscode.workspace.getConfiguration('codix');
   const ro = c.get<Partial<RequestOptions>>('requestOptions') ?? {};
   return {
     apiBase: (c.get<string>('apiBase') ?? '').replace(/\/+$/, ''),

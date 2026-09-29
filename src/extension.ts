@@ -18,16 +18,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const reindex = () =>
     vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Window, title: 'Solution Agent: indexing' },
+      { location: vscode.ProgressLocation.Window, title: 'Codix: indexing' },
       (p) => index.build(p)
     );
 
   context.subscriptions.push(
     index,
     mcp,
-    vscode.commands.registerCommand('solutionAgent.mcpServers', () => mcp.showServers()),
-    vscode.commands.registerCommand('solutionAgent.mcpReconnect', () => mcp.connectAll()),
-    vscode.commands.registerCommand('solutionAgent.mcpPrompt', async () => {
+    vscode.commands.registerCommand('codix.mcpServers', () => mcp.showServers()),
+    vscode.commands.registerCommand('codix.mcpReconnect', () => mcp.connectAll()),
+    vscode.commands.registerCommand('codix.mcpPrompt', async () => {
       try {
         const text = await mcp.pickAndRenderPrompt();
         if (text) chat.prefill(text);
@@ -36,38 +36,38 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.registerTextDocumentContentProvider(PROPOSED_SCHEME, proposed),
     vscode.window.registerWebviewViewProvider(ChatViewProvider.viewId, chat, { webviewOptions: { retainContextWhenHidden: true } }),
 
-    vscode.commands.registerCommand('solutionAgent.reindex', reindex),
-    vscode.commands.registerCommand('solutionAgent.newChat', () => chat.newChat()),
-    vscode.commands.registerCommand('solutionAgent.askAboutSelection', () => chat.askAboutSelection()),
+    vscode.commands.registerCommand('codix.reindex', reindex),
+    vscode.commands.registerCommand('codix.newChat', () => chat.newChat()),
+    vscode.commands.registerCommand('codix.askAboutSelection', () => chat.askAboutSelection()),
 
-    vscode.commands.registerCommand('solutionAgent.setApiKey', async () => {
+    vscode.commands.registerCommand('codix.setApiKey', async () => {
       const key = await vscode.window.showInputBox({ prompt: 'API key / token for your OpenAI server (stored in VS Code SecretStorage)', password: true, ignoreFocusOut: true });
       if (key !== undefined) {
         await context.secrets.store(SECRET_API_KEY, key);
-        vscode.window.showInformationMessage('Solution Agent: API key saved.');
+        vscode.window.showInformationMessage('Codix: API key saved.');
       }
     }),
-    vscode.commands.registerCommand('solutionAgent.clearApiKey', async () => {
+    vscode.commands.registerCommand('codix.clearApiKey', async () => {
       await context.secrets.delete(SECRET_API_KEY);
-      vscode.window.showInformationMessage('Solution Agent: API key cleared.');
+      vscode.window.showInformationMessage('Codix: API key cleared.');
     }),
 
-    vscode.commands.registerCommand('solutionAgent.testConnection', async () => {
+    vscode.commands.registerCommand('codix.testConnection', async () => {
       const cfg = getConfig();
       try {
         const client = await getClient();
         const res = await client.chat([{ role: 'user', content: 'Reply with the single word: pong' }], undefined);
-        vscode.window.showInformationMessage(`Solution Agent: connected to ${cfg.apiBase} (${cfg.model}). Reply: ${res.content.trim().slice(0, 80)}`);
+        vscode.window.showInformationMessage(`Codix: connected to ${cfg.apiBase} (${cfg.model}). Reply: ${res.content.trim().slice(0, 80)}`);
       } catch (e: any) {
-        vscode.window.showErrorMessage(`Solution Agent: connection failed — ${e.message}`);
+        vscode.window.showErrorMessage(`Codix: connection failed — ${e.message}`);
       }
     }),
 
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('solutionAgent.mcpServers') || e.affectsConfiguration('solutionAgent.mcpLoadWorkspaceConfigs')) {
+      if (e.affectsConfiguration('codix.mcpServers') || e.affectsConfiguration('codix.mcpLoadWorkspaceConfigs')) {
         mcp.connectAll();
       }
-      if (e.affectsConfiguration('solutionAgent.includeGlobs') || e.affectsConfiguration('solutionAgent.excludeGlobs') || e.affectsConfiguration('solutionAgent.maxFileSizeKb')) {
+      if (e.affectsConfiguration('codix.includeGlobs') || e.affectsConfiguration('codix.excludeGlobs') || e.affectsConfiguration('codix.maxFileSizeKb')) {
         reindex();
       }
     }),

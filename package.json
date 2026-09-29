@@ -1,7 +1,7 @@
 {
-  "name": "solution-agent",
-  "displayName": "Solution Agent",
-  "description": "AI coding agent that reads your whole solution. Works with internal OpenAI-compatible servers that need custom headers and client certificates.",
+  "name": "codix",
+  "displayName": "Codix",
+  "description": "Codix: AI coding agent for VS Code that reads your whole solution. Works with internal OpenAI-compatible servers (custom headers + client certificates) and MCP servers.",
   "version": "0.2.0",
   "publisher": "internal",
   "engines": {
@@ -20,71 +20,71 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "solutionAgent",
-          "title": "Solution Agent",
+          "id": "codix",
+          "title": "Codix",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "solutionAgent": [
+      "codix": [
         {
           "type": "webview",
-          "id": "solutionAgent.chat",
+          "id": "codix.chat",
           "name": "Chat"
         }
       ]
     },
     "commands": [
       {
-        "command": "solutionAgent.reindex",
-        "title": "Solution Agent: Re-index Solution"
+        "command": "codix.reindex",
+        "title": "Codix: Re-index Solution"
       },
       {
-        "command": "solutionAgent.setApiKey",
-        "title": "Solution Agent: Set API Key"
+        "command": "codix.setApiKey",
+        "title": "Codix: Set API Key"
       },
       {
-        "command": "solutionAgent.clearApiKey",
-        "title": "Solution Agent: Clear API Key"
+        "command": "codix.clearApiKey",
+        "title": "Codix: Clear API Key"
       },
       {
-        "command": "solutionAgent.testConnection",
-        "title": "Solution Agent: Test Connection"
+        "command": "codix.testConnection",
+        "title": "Codix: Test Connection"
       },
       {
-        "command": "solutionAgent.newChat",
-        "title": "Solution Agent: New Chat",
+        "command": "codix.newChat",
+        "title": "Codix: New Chat",
         "icon": "$(add)"
       },
       {
-        "command": "solutionAgent.askAboutSelection",
-        "title": "Solution Agent: Ask About Selection"
+        "command": "codix.askAboutSelection",
+        "title": "Codix: Ask About Selection"
       },
       {
-        "command": "solutionAgent.mcpServers",
-        "title": "Solution Agent: Show MCP Servers"
+        "command": "codix.mcpServers",
+        "title": "Codix: Show MCP Servers"
       },
       {
-        "command": "solutionAgent.mcpReconnect",
-        "title": "Solution Agent: Reconnect MCP Servers"
+        "command": "codix.mcpReconnect",
+        "title": "Codix: Reconnect MCP Servers"
       },
       {
-        "command": "solutionAgent.mcpPrompt",
-        "title": "Solution Agent: Insert MCP Prompt"
+        "command": "codix.mcpPrompt",
+        "title": "Codix: Insert MCP Prompt"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "solutionAgent.newChat",
-          "when": "view == solutionAgent.chat",
+          "command": "codix.newChat",
+          "when": "view == codix.chat",
           "group": "navigation"
         }
       ],
       "editor/context": [
         {
-          "command": "solutionAgent.askAboutSelection",
+          "command": "codix.askAboutSelection",
           "when": "editorHasSelection",
           "group": "navigation"
         }
@@ -92,40 +92,40 @@
     },
     "keybindings": [
       {
-        "command": "solutionAgent.askAboutSelection",
+        "command": "codix.askAboutSelection",
         "key": "ctrl+shift+l",
         "mac": "cmd+shift+l",
         "when": "editorTextFocus"
       }
     ],
     "configuration": {
-      "title": "Solution Agent",
+      "title": "Codix",
       "properties": {
-        "solutionAgent.apiBase": {
+        "codix.apiBase": {
           "type": "string",
           "default": "https://your-internal-openai-server/v1",
           "description": "Base URL of the OpenAI-compatible API (should end with /v1 or equivalent). /chat/completions is appended."
         },
-        "solutionAgent.model": {
+        "codix.model": {
           "type": "string",
           "default": "gpt-4o",
           "description": "Model name sent to the server."
         },
-        "solutionAgent.contextWindowTokens": {
+        "codix.contextWindowTokens": {
           "type": "number",
           "default": 128000,
           "description": "Model context window in tokens. Used to decide how much of the solution is loaded up front."
         },
-        "solutionAgent.maxOutputTokens": {
+        "codix.maxOutputTokens": {
           "type": "number",
           "default": 4096,
           "description": "Max tokens the model may generate per response."
         },
-        "solutionAgent.temperature": {
+        "codix.temperature": {
           "type": "number",
           "default": 0.1
         },
-        "solutionAgent.requestOptions": {
+        "codix.requestOptions": {
           "type": "object",
           "default": {
             "headers": {},
@@ -142,17 +142,17 @@
           },
           "markdownDescription": "Request options (mirrors Continue's `requestOptions`). `headers` supports `${env:VAR}` and `${secret:apiKey}` placeholders. `clientCertificate.cert`/`key` are PEM file paths; use `pfxPath` for a .pfx/.p12 instead. `caBundlePath` may be a single path or an array of paths."
         },
-        "solutionAgent.authHeaderName": {
+        "codix.authHeaderName": {
           "type": "string",
           "default": "Authorization",
           "description": "Header used for the stored API key. Set to empty to send no key header."
         },
-        "solutionAgent.authHeaderPrefix": {
+        "codix.authHeaderPrefix": {
           "type": "string",
           "default": "Bearer ",
           "description": "Prefix placed before the API key in the auth header."
         },
-        "solutionAgent.includeGlobs": {
+        "codix.includeGlobs": {
           "type": "array",
           "items": {
             "type": "string"
@@ -162,7 +162,7 @@
           ],
           "description": "Files to include in the solution index."
         },
-        "solutionAgent.excludeGlobs": {
+        "codix.excludeGlobs": {
           "type": "array",
           "items": {
             "type": "string"
@@ -186,47 +186,47 @@
           ],
           "description": "Files and folders excluded from the solution index."
         },
-        "solutionAgent.maxFileSizeKb": {
+        "codix.maxFileSizeKb": {
           "type": "number",
           "default": 256,
           "description": "Files larger than this are listed but not loaded into context."
         },
-        "solutionAgent.maxFiles": {
+        "codix.maxFiles": {
           "type": "number",
           "default": 20000,
           "description": "Safety cap on number of files indexed."
         },
-        "solutionAgent.solutionContextBudget": {
+        "codix.solutionContextBudget": {
           "type": "number",
           "default": 0.6,
           "description": "Fraction of the context window used to preload whole-solution source. The rest is left for chat history, tool results, and output. Files that do not fit stay reachable via tools."
         },
-        "solutionAgent.maxAgentSteps": {
+        "codix.maxAgentSteps": {
           "type": "number",
           "default": 25,
           "description": "Max tool-calling rounds per request."
         },
-        "solutionAgent.autoApplyEdits": {
+        "codix.autoApplyEdits": {
           "type": "boolean",
           "default": false,
           "description": "Apply file edits without asking. Off by default: each edit opens a diff for approval."
         },
-        "solutionAgent.allowTerminalCommands": {
+        "codix.allowTerminalCommands": {
           "type": "boolean",
           "default": false,
           "description": "Let the agent propose shell commands (e.g. dotnet build, npm test). Each command still requires approval."
         },
-        "solutionAgent.useNativeTools": {
+        "codix.useNativeTools": {
           "type": "boolean",
           "default": true,
           "description": "Use OpenAI function calling. Turn off if your internal server/model does not support `tools`; a text-based tool protocol is used instead."
         },
-        "solutionAgent.systemPromptExtra": {
+        "codix.systemPromptExtra": {
           "type": "string",
           "default": "",
           "description": "Extra instructions appended to the system prompt (team conventions, etc.)."
         },
-        "solutionAgent.mcpServers": {
+        "codix.mcpServers": {
           "type": "array",
           "default": [],
           "items": {
@@ -276,12 +276,12 @@
               },
               "requestOptions": {
                 "type": "object",
-                "description": "Same shape as solutionAgent.requestOptions: headers, caBundlePath, clientCertificate, pfxPath, verifySsl, proxy."
+                "description": "Same shape as codix.requestOptions: headers, caBundlePath, clientCertificate, pfxPath, verifySsl, proxy."
               },
               "useGlobalRequestOptions": {
                 "type": "boolean",
                 "default": false,
-                "description": "Send solutionAgent.requestOptions (headers + certs) to this server too."
+                "description": "Send codix.requestOptions (headers + certs) to this server too."
               },
               "autoApprove": {
                 "anyOf": [
@@ -307,12 +307,12 @@
           },
           "markdownDescription": "MCP servers the agent can use (like Continue's `mcpServers`). stdio servers use `command`/`args`/`env`; remote servers use `url` plus `headers` / `requestOptions` for custom headers and client certificates. Values support `${env:VAR}`, `${input:id}` (prompted once, stored securely) and `${workspaceFolder}`."
         },
-        "solutionAgent.mcpLoadWorkspaceConfigs": {
+        "codix.mcpLoadWorkspaceConfigs": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Also load servers from `.vscode/mcp.json` and `.continue/mcpServers/*.json` in trusted workspaces. You are asked once before a workspace's servers start."
         },
-        "solutionAgent.mcpToolApproval": {
+        "codix.mcpToolApproval": {
           "type": "string",
           "enum": [
             "ask",
@@ -343,7 +343,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Hectorcaban-sudo/solution-agent.git"
+    "url": "https://github.com/Hectorcaban-sudo/codix.git"
   },
   "license": "UNLICENSED"
 }

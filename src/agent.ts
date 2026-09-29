@@ -56,7 +56,7 @@ export class Agent {
     );
 
     return [
-      `You are Solution Agent, an expert software engineer working inside the user's VS Code workspace.`,
+      `You are Codix, an expert software engineer working inside the user's VS Code workspace.`,
       `You have the user's entire solution indexed. Its structure and ${ctx.omitted === 0 ? 'the full source of every file' : 'the full source of the most relevant files'} are below.`,
       ctx.omitted > 0 ? `${ctx.omitted} files are not shown in full; use search_code and read_file to inspect them before making claims about them.` : '',
       `Guidelines:
@@ -137,7 +137,7 @@ export class Agent {
         }
       }
     }
-    events.onToken(`\n\n_Stopped after ${cfg.maxAgentSteps} steps (solutionAgent.maxAgentSteps)._`);
+    events.onToken(`\n\n_Stopped after ${cfg.maxAgentSteps} steps (codix.maxAgentSteps)._`);
   }
 }
 
