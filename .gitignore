@@ -1,0 +1,11 @@
+node_modules/
+out/
+*.vsix
+.vscode-test/
+*.log
+.DS_Store
+# never commit certificates or keys
+*.pem
+*.key
+*.pfx
+*.p12

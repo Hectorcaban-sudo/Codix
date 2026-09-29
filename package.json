@@ -1,0 +1,349 @@
+{
+  "name": "solution-agent",
+  "displayName": "Solution Agent",
+  "description": "AI coding agent that reads your whole solution. Works with internal OpenAI-compatible servers that need custom headers and client certificates.",
+  "version": "0.2.0",
+  "publisher": "internal",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages",
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "solutionAgent",
+          "title": "Solution Agent",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "solutionAgent": [
+        {
+          "type": "webview",
+          "id": "solutionAgent.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "solutionAgent.reindex",
+        "title": "Solution Agent: Re-index Solution"
+      },
+      {
+        "command": "solutionAgent.setApiKey",
+        "title": "Solution Agent: Set API Key"
+      },
+      {
+        "command": "solutionAgent.clearApiKey",
+        "title": "Solution Agent: Clear API Key"
+      },
+      {
+        "command": "solutionAgent.testConnection",
+        "title": "Solution Agent: Test Connection"
+      },
+      {
+        "command": "solutionAgent.newChat",
+        "title": "Solution Agent: New Chat",
+        "icon": "$(add)"
+      },
+      {
+        "command": "solutionAgent.askAboutSelection",
+        "title": "Solution Agent: Ask About Selection"
+      },
+      {
+        "command": "solutionAgent.mcpServers",
+        "title": "Solution Agent: Show MCP Servers"
+      },
+      {
+        "command": "solutionAgent.mcpReconnect",
+        "title": "Solution Agent: Reconnect MCP Servers"
+      },
+      {
+        "command": "solutionAgent.mcpPrompt",
+        "title": "Solution Agent: Insert MCP Prompt"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "solutionAgent.newChat",
+          "when": "view == solutionAgent.chat",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "solutionAgent.askAboutSelection",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "solutionAgent.askAboutSelection",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Solution Agent",
+      "properties": {
+        "solutionAgent.apiBase": {
+          "type": "string",
+          "default": "https://your-internal-openai-server/v1",
+          "description": "Base URL of the OpenAI-compatible API (should end with /v1 or equivalent). /chat/completions is appended."
+        },
+        "solutionAgent.model": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "Model name sent to the server."
+        },
+        "solutionAgent.contextWindowTokens": {
+          "type": "number",
+          "default": 128000,
+          "description": "Model context window in tokens. Used to decide how much of the solution is loaded up front."
+        },
+        "solutionAgent.maxOutputTokens": {
+          "type": "number",
+          "default": 4096,
+          "description": "Max tokens the model may generate per response."
+        },
+        "solutionAgent.temperature": {
+          "type": "number",
+          "default": 0.1
+        },
+        "solutionAgent.requestOptions": {
+          "type": "object",
+          "default": {
+            "headers": {},
+            "caBundlePath": "",
+            "clientCertificate": {
+              "cert": "",
+              "key": "",
+              "passphrase": ""
+            },
+            "pfxPath": "",
+            "verifySsl": true,
+            "timeoutMs": 300000,
+            "proxy": ""
+          },
+          "markdownDescription": "Request options (mirrors Continue's `requestOptions`). `headers` supports `${env:VAR}` and `${secret:apiKey}` placeholders. `clientCertificate.cert`/`key` are PEM file paths; use `pfxPath` for a .pfx/.p12 instead. `caBundlePath` may be a single path or an array of paths."
+        },
+        "solutionAgent.authHeaderName": {
+          "type": "string",
+          "default": "Authorization",
+          "description": "Header used for the stored API key. Set to empty to send no key header."
+        },
+        "solutionAgent.authHeaderPrefix": {
+          "type": "string",
+          "default": "Bearer ",
+          "description": "Prefix placed before the API key in the auth header."
+        },
+        "solutionAgent.includeGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*"
+          ],
+          "description": "Files to include in the solution index."
+        },
+        "solutionAgent.excludeGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/bin/**",
+            "**/obj/**",
+            "**/.git/**",
+            "**/.vs/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/build/**",
+            "**/packages/**",
+            "**/.venv/**",
+            "**/__pycache__/**",
+            "**/*.min.js",
+            "**/*.map",
+            "**/*.lock",
+            "**/package-lock.json"
+          ],
+          "description": "Files and folders excluded from the solution index."
+        },
+        "solutionAgent.maxFileSizeKb": {
+          "type": "number",
+          "default": 256,
+          "description": "Files larger than this are listed but not loaded into context."
+        },
+        "solutionAgent.maxFiles": {
+          "type": "number",
+          "default": 20000,
+          "description": "Safety cap on number of files indexed."
+        },
+        "solutionAgent.solutionContextBudget": {
+          "type": "number",
+          "default": 0.6,
+          "description": "Fraction of the context window used to preload whole-solution source. The rest is left for chat history, tool results, and output. Files that do not fit stay reachable via tools."
+        },
+        "solutionAgent.maxAgentSteps": {
+          "type": "number",
+          "default": 25,
+          "description": "Max tool-calling rounds per request."
+        },
+        "solutionAgent.autoApplyEdits": {
+          "type": "boolean",
+          "default": false,
+          "description": "Apply file edits without asking. Off by default: each edit opens a diff for approval."
+        },
+        "solutionAgent.allowTerminalCommands": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the agent propose shell commands (e.g. dotnet build, npm test). Each command still requires approval."
+        },
+        "solutionAgent.useNativeTools": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use OpenAI function calling. Turn off if your internal server/model does not support `tools`; a text-based tool protocol is used instead."
+        },
+        "solutionAgent.systemPromptExtra": {
+          "type": "string",
+          "default": "",
+          "description": "Extra instructions appended to the system prompt (team conventions, etc.)."
+        },
+        "solutionAgent.mcpServers": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "stdio",
+                  "streamable-http",
+                  "sse"
+                ],
+                "description": "Inferred from command/url if omitted."
+              },
+              "command": {
+                "type": "string"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "requestOptions": {
+                "type": "object",
+                "description": "Same shape as solutionAgent.requestOptions: headers, caBundlePath, clientCertificate, pfxPath, verifySsl, proxy."
+              },
+              "useGlobalRequestOptions": {
+                "type": "boolean",
+                "default": false,
+                "description": "Send solutionAgent.requestOptions (headers + certs) to this server too."
+              },
+              "autoApprove": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "description": "true, or a list of tool names that run without asking."
+              },
+              "disabled": {
+                "type": "boolean"
+              },
+              "timeoutMs": {
+                "type": "number"
+              }
+            }
+          },
+          "markdownDescription": "MCP servers the agent can use (like Continue's `mcpServers`). stdio servers use `command`/`args`/`env`; remote servers use `url` plus `headers` / `requestOptions` for custom headers and client certificates. Values support `${env:VAR}`, `${input:id}` (prompted once, stored securely) and `${workspaceFolder}`."
+        },
+        "solutionAgent.mcpLoadWorkspaceConfigs": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also load servers from `.vscode/mcp.json` and `.continue/mcpServers/*.json` in trusted workspaces. You are asked once before a workspace's servers start."
+        },
+        "solutionAgent.mcpToolApproval": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "auto"
+          ],
+          "default": "ask",
+          "markdownDescription": "`ask`: confirm each MCP tool call (with an 'allow for this session' option). `auto`: never ask. Per-server `autoApprove` overrides."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "https-proxy-agent": "^7.0.4",
+    "undici": "^6.29.0",
+    "zod": "^4.6.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hectorcaban-sudo/solution-agent.git"
+  },
+  "license": "UNLICENSED"
+}
