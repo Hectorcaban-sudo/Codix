@@ -11,40 +11,39 @@ export interface TlsOptions {
   rejectUnauthorized: boolean;
 }
 
-function readMaybe(p: string | undefined, apiKey?: string): Buffer | undefined {
+function readMaybe(p: string | undefined, apiKey?: string, pfxPass?: string): Buffer | undefined {
   if (!p) return undefined;
-  const resolved = interpolate(p, apiKey);
+  const resolved = interpolate(p, apiKey, pfxPass);
   if (!resolved) return undefined;
-  // Allow the PEM itself to be pasted inline instead of a path.
   if (resolved.includes('-----BEGIN')) return Buffer.from(resolved);
   return fs.readFileSync(resolved);
 }
 
-/** Converts Continue-style requestOptions into Node TLS options (internal CA, client cert/key or PFX). */
-export function buildTlsOptions(ro: Partial<RequestOptions> | undefined, apiKey?: string): TlsOptions {
+export function buildTlsOptions(ro: Partial<RequestOptions> | undefined, apiKey?: string, pfxPass?: string): TlsOptions {
   const out: TlsOptions = { rejectUnauthorized: ro?.verifySsl ?? true };
   if (!ro) return out;
 
   const caPaths = Array.isArray(ro.caBundlePath) ? ro.caBundlePath : ro.caBundlePath ? [ro.caBundlePath] : [];
   if (caPaths.length) {
-    // Append internal CAs to Node's default roots rather than replacing them.
-    out.ca = [...tls.rootCertificates, ...caPaths.map((p) => readMaybe(p, apiKey)!.toString())];
+    out.ca = [...tls.rootCertificates, ...caPaths.map((p) => readMaybe(p, apiKey, pfxPass)!.toString())];
   }
 
+  const resolvedPfxPass = ro.pfxPassphrase ? interpolate(ro.pfxPassphrase, apiKey, pfxPass) : pfxPass;
   if (ro.pfxPath) {
-    out.pfx = readMaybe(ro.pfxPath, apiKey);
-    if (ro.pfxPassphrase) out.passphrase = interpolate(ro.pfxPassphrase, apiKey);
+    out.pfx = readMaybe(ro.pfxPath, apiKey, pfxPass);
+    if (resolvedPfxPass) out.passphrase = resolvedPfxPass;
   } else if (ro.clientCertificate?.cert) {
-    out.cert = readMaybe(ro.clientCertificate.cert, apiKey);
-    out.key = readMaybe(ro.clientCertificate.key, apiKey);
-    if (ro.clientCertificate.passphrase) out.passphrase = interpolate(ro.clientCertificate.passphrase, apiKey);
+    out.cert = readMaybe(ro.clientCertificate.cert, apiKey, pfxPass);
+    out.key = readMaybe(ro.clientCertificate.key, apiKey, pfxPass);
+    if (ro.clientCertificate.passphrase) out.passphrase = interpolate(ro.clientCertificate.passphrase, apiKey, pfxPass);
+    else if (resolvedPfxPass) out.passphrase = resolvedPfxPass;
   }
   return out;
 }
 
-export function interpolateHeaders(headers: Record<string, string> | undefined, apiKey?: string): Record<string, string> {
+export function interpolateHeaders(headers: Record<string, string> | undefined, apiKey?: string, pfxPass?: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(headers ?? {})) out[k] = interpolate(String(v), apiKey);
+  for (const [k, v] of Object.entries(headers ?? {})) out[k] = interpolate(String(v), apiKey, pfxPass);
   return out;
 }
 

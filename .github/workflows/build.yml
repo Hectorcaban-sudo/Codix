@@ -17,7 +17,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run compile
-      - run: npx vsce package
+      - name: Require compiled entrypoint
+        run: test -f out/extension.js
+      - run: npx @vscode/vsce package
+      - name: Require VSIX
+        run: test -n "$(ls -1 *.vsix 2>/dev/null)"
       - uses: actions/upload-artifact@v4
         with:
           name: codix-vsix

@@ -2,7 +2,7 @@
   "name": "codix",
   "displayName": "Codix",
   "description": "Codix: AI coding agent for VS Code that reads your whole solution. Works with internal OpenAI-compatible servers (custom headers + client certificates) and MCP servers.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "internal",
   "engines": {
     "vscode": "^1.85.0"
@@ -14,7 +14,20 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onView:codix.chat",
+    "onCommand:codix.reindex",
+    "onCommand:codix.setApiKey",
+    "onCommand:codix.clearApiKey",
+    "onCommand:codix.setPfxPassphrase",
+    "onCommand:codix.testConnection",
+    "onCommand:codix.newChat",
+    "onCommand:codix.askAboutSelection",
+    "onCommand:codix.selectModel",
+    "onCommand:codix.showHistory",
+    "onCommand:codix.mcpServers",
+    "onCommand:codix.mcpReconnect",
+    "onCommand:codix.mcpPrompt"
   ],
   "contributes": {
     "viewsContainers": {
@@ -72,12 +85,30 @@
       {
         "command": "codix.mcpPrompt",
         "title": "Codix: Insert MCP Prompt"
+      },
+      {
+        "command": "codix.setPfxPassphrase",
+        "title": "Codix: Set PFX Passphrase"
+      },
+      {
+        "command": "codix.selectModel",
+        "title": "Codix: Select Model"
+      },
+      {
+        "command": "codix.showHistory",
+        "title": "Codix: Chat History",
+        "icon": "$(history)"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "codix.newChat",
+          "when": "view == codix.chat",
+          "group": "navigation"
+        },
+        {
+          "command": "codix.showHistory",
           "when": "view == codix.chat",
           "group": "navigation"
         }
@@ -140,7 +171,7 @@
             "timeoutMs": 300000,
             "proxy": ""
           },
-          "markdownDescription": "Request options (mirrors Continue's `requestOptions`). `headers` supports `${env:VAR}` and `${secret:apiKey}` placeholders. `clientCertificate.cert`/`key` are PEM file paths; use `pfxPath` for a .pfx/.p12 instead. `caBundlePath` may be a single path or an array of paths."
+          "markdownDescription": "Request options (mirrors Continue's `requestOptions`). `headers` supports `${env:VAR}` and `${secret:apiKey}` placeholders. `clientCertificate.cert`/`key` are PEM file paths; use `pfxPath` for a .pfx/.p12 instead. `caBundlePath` may be a single path or an array of paths. Use `${secret:pfxPassphrase}` after running Codix: Set PFX Passphrase."
         },
         "codix.authHeaderName": {
           "type": "string",
@@ -158,7 +189,7 @@
             "type": "string"
           },
           "default": [
-            "**/*"
+            "**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,cs,vb,fs,py,go,rs,java,kt,swift,sql,yml,yaml,xml,props,targets,sln,csproj,fsproj,vbproj,toml,gradle}"
           ],
           "description": "Files to include in the solution index."
         },
@@ -198,7 +229,7 @@
         },
         "codix.solutionContextBudget": {
           "type": "number",
-          "default": 0.6,
+          "default": 0.45,
           "description": "Fraction of the context window used to preload whole-solution source. The rest is left for chat history, tool results, and output. Files that do not fit stay reachable via tools."
         },
         "codix.maxAgentSteps": {
@@ -327,7 +358,8 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package --no-dependencies"
+    "package": "npm run compile && vsce package",
+    "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -343,7 +375,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Hectorcaban-sudo/codix.git"
+    "url": "https://github.com/Hectorcaban-sudo/Codix.git"
   },
   "license": "UNLICENSED"
 }

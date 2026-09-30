@@ -37,22 +37,16 @@ export interface StreamHandlers {
   signal?: AbortSignal;
 }
 
-/**
- * OpenAI-compatible client built on Node's https module so that we fully
- * control TLS: custom CA bundle, client cert + key (PEM) or PFX, and
- * arbitrary custom headers. This mirrors Continue's `requestOptions`.
- */
 export class LlmClient {
   private agent: http.Agent | undefined;
 
-  constructor(private cfg: AgentConfig, private apiKey: string | undefined) {
+  constructor(private cfg: AgentConfig, private apiKey: string | undefined, private pfxPass?: string) {
     this.agent = this.buildAgent();
   }
 
   private buildAgent(): http.Agent | undefined {
     const ro = this.cfg.requestOptions;
-    const tls: https.AgentOptions = { keepAlive: true, ...buildTlsOptions(ro, this.apiKey) };
-
+    const tls: https.AgentOptions = { keepAlive: true, ...buildTlsOptions(ro, this.apiKey, this.pfxPass) };
     const proxy = ro.proxy || process.env.HTTPS_PROXY || process.env.https_proxy;
     if (proxy && this.cfg.apiBase.startsWith('https')) {
       return new HttpsProxyAgent(proxy, tls);
@@ -68,15 +62,31 @@ export class LlmClient {
     if (this.apiKey && this.cfg.authHeaderName) {
       h[this.cfg.authHeaderName] = `${this.cfg.authHeaderPrefix}${this.apiKey}`;
     }
-    Object.assign(h, interpolateHeaders(this.cfg.requestOptions.headers, this.apiKey));
+    Object.assign(h, interpolateHeaders(this.cfg.requestOptions.headers, this.apiKey, this.pfxPass));
     return h;
   }
 
-  async chat(
-    messages: ChatMessage[],
-    tools: ToolSchema[] | undefined,
-    handlers: StreamHandlers = {}
-  ): Promise<CompletionResult> {
+  async listModels(): Promise<string[]> {
+    const url = new URL(this.cfg.apiBase + '/models');
+    const lib = url.protocol === 'https:' ? https : http;
+    const payload = await new Promise<string>((resolve, reject) => {
+      const req = lib.request(url, { method: 'GET', agent: this.agent, headers: this.headers(), timeout: 30000 }, (res) => {
+        let raw = '';
+        res.on('data', (c) => (raw += c));
+        res.on('end', () => {
+          if ((res.statusCode ?? 0) >= 300) reject(new Error(`HTTP ${res.statusCode}: ${raw.slice(0, 500)}`));
+          else resolve(raw);
+        });
+      });
+      req.on('error', (e) => reject(explainTlsError(e)));
+      req.end();
+    });
+    const json = JSON.parse(payload);
+    const data = json.data ?? json.models ?? [];
+    return data.map((m: any) => m.id ?? m.name).filter(Boolean);
+  }
+
+  async chat(messages: ChatMessage[], tools: ToolSchema[] | undefined, handlers: StreamHandlers = {}): Promise<CompletionResult> {
     const body: Record<string, unknown> = {
       model: this.cfg.model,
       messages,
@@ -140,7 +150,7 @@ export class LlmClient {
         const content = choice.message?.content ?? '';
         if (content) h.onToken?.(content);
         resolve({ content, toolCalls: choice.message?.tool_calls ?? [], finishReason: choice.finish_reason ?? null });
-      } catch (e) {
+      } catch {
         reject(new Error(`Could not parse server response: ${raw.slice(0, 500)}`));
       }
     });
@@ -160,11 +170,7 @@ export class LlmClient {
     const handleData = (data: string) => {
       if (data === '[DONE]') return;
       let json: any;
-      try {
-        json = JSON.parse(data);
-      } catch {
-        return;
-      }
+      try { json = JSON.parse(data); } catch { return; }
       const choice = json.choices?.[0];
       if (!choice) return;
       const delta = choice.delta ?? {};

@@ -42,6 +42,8 @@ export class Agent {
 
   reset() { this.history = []; this.pinned = []; }
   pin(paths: string[]) { this.pinned.push(...paths); }
+  getHistory(): ChatMessage[] { return this.history; }
+  loadHistory(messages: ChatMessage[]) { this.history = messages; this.pinned = []; }
 
   private systemPrompt(cfg: AgentConfig, query: string, events: AgentEvents): string {
     const budget = Math.floor(cfg.contextWindowTokens * cfg.solutionContextBudget);
@@ -49,10 +51,11 @@ export class Agent {
     const overviewTokens = estimateTokens(overview);
     const ctx = this.index.buildSolutionContext(Math.max(0, budget - overviewTokens), query, this.pinned);
 
+    const names = ctx.paths?.slice(0, 12).join(', ') ?? '';
     events.onContextInfo(
       ctx.omitted === 0
         ? `Whole solution loaded: ${ctx.included} files`
-        : `Loaded ${ctx.included} most relevant files; ${ctx.omitted} more reachable via tools`
+        : `Loaded ${ctx.included} relevant files${names ? ` (${names}${ctx.included > 12 ? ', …' : ''})` : ''}; ${ctx.omitted} more via tools`
     );
 
     return [
@@ -75,7 +78,6 @@ export class Agent {
     ].filter(Boolean).join('\n\n');
   }
 
-  /** Keeps the conversation inside the remaining token budget by shrinking old tool results, then dropping old turns. */
   private trimHistory(cfg: AgentConfig, systemTokens: number) {
     const limit = cfg.contextWindowTokens - cfg.maxOutputTokens - systemTokens - 1000;
     const size = () => this.history.reduce((a, m) => a + estimateTokens((m.content ?? '') + JSON.stringify(m.tool_calls ?? '')), 0);
@@ -85,7 +87,7 @@ export class Agent {
     }
     while (size() > limit && this.history.length > 2) {
       this.history.shift();
-      while (this.history[0]?.role === 'tool') this.history.shift(); // never start with an orphan tool result
+      while (this.history[0]?.role === 'tool') this.history.shift();
     }
   }
 

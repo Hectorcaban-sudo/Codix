@@ -215,11 +215,9 @@ export async function runTool(name: string, rawArgs: string, ctx: ToolContext): 
         const crlf = original.includes('\r\n');
         let text = normalizeEol(original);
         for (const [i, e] of (args.edits ?? []).entries()) {
-          const oldT = normalizeEol(e.old_text ?? '');
-          const count = oldT ? text.split(oldT).length - 1 : 0;
-          if (count === 0) return `Error: edit ${i + 1}: old_text not found in ${args.path}. Re-read the file and copy the text exactly.`;
-          if (count > 1) return `Error: edit ${i + 1}: old_text matches ${count} places in ${args.path}. Include more surrounding lines.`;
-          text = text.replace(oldT, () => normalizeEol(e.new_text ?? ''));
+          const applied = applySnippet(text, normalizeEol(e.old_text ?? ''), normalizeEol(e.new_text ?? ''));
+          if ('error' in applied) return `Error: edit ${i + 1}: ${applied.error} in ${args.path}.`;
+          text = applied.text;
         }
         if (crlf) text = text.replace(/\n/g, '\r\n');
         if (!(await confirmChange(ctx, uri, text, args.explanation ?? '', false))) return 'User rejected the edit. Ask what they want changed.';
@@ -267,4 +265,20 @@ export async function runTool(name: string, rawArgs: string, ctx: ToolContext): 
   } catch (e: any) {
     return `Error: ${e?.message ?? e}`;
   }
+}
+
+
+function applySnippet(text: string, oldT: string, newT: string): { text: string } | { error: string } {
+  if (!oldT) return { error: 'old_text is empty' };
+  const exact = text.split(oldT).length - 1;
+  if (exact === 1) return { text: text.replace(oldT, () => newT) };
+  if (exact > 1) return { error: `old_text matches ${exact} places. Include more surrounding lines` };
+  const flex = oldT.trim().replace(/[ \t]+/g, '[ \t]+').replace(/\n/g, '\\n');
+  try {
+    const rx = new RegExp(flex);
+    const matches = text.match(new RegExp(flex, 'g')) ?? [];
+    if (matches.length === 1) return { text: text.replace(rx, newT) };
+    if (matches.length > 1) return { error: `whitespace-flex match hit ${matches.length} places` };
+  } catch { /* ignore bad regex */ }
+  return { error: 'old_text not found. Re-read the file and copy the text exactly' };
 }

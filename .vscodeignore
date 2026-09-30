@@ -2,3 +2,7 @@ src/**
 .vscode/**
 **/*.map
 tsconfig.json
+.gitignore
+.github/**
+**/*.md
+node_modules/**/*.md

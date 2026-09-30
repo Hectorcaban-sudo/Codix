@@ -102,6 +102,7 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
   $('new').addEventListener('click', () => vscode.postMessage({ type: 'newChat' }));
+  const hist = $('history'); if (hist) hist.addEventListener('click', () => vscode.postMessage({ type: 'history' }));
   $('mcp').addEventListener('click', () => vscode.postMessage({ type: 'mcp' }));
   $('mcpPrompt').addEventListener('click', () => vscode.postMessage({ type: 'mcpPrompt' }));
   $('reindex').addEventListener('click', () => vscode.postMessage({ type: 'reindex' }));
@@ -118,6 +119,15 @@
     switch (m.type) {
       case 'status': $('status').textContent = m.text; break;
       case 'clear': messages.innerHTML = '<div class="empty">New chat. Ask anything about your solution.</div>'; setBusy(false); break;
+      case 'restore':
+        messages.innerHTML = '';
+        setBusy(false);
+        for (const item of m.messages || []) {
+          if (item.role === 'user') addUser(item.text);
+          else { startAssistant(); current.text = item.text || ''; current.bodyEl.innerHTML = render(current.text); current = null; }
+        }
+        if (!messages.children.length) messages.innerHTML = '<div class="empty">Empty chat.</div>';
+        break;
       case 'prefill': input.value = m.text; input.focus(); break;
       case 'user': addUser(m.text); break;
       case 'assistantStart': setBusy(true); startAssistant(); break;

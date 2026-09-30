@@ -2,13 +2,21 @@ import * as vscode from 'vscode';
 import { Agent } from './agent';
 import { SolutionIndex } from './indexer';
 import { McpManager } from './mcpManager';
+import { SessionStore, StoredSession } from './sessionStore';
 
 export class ChatViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewId = 'codix.chat';
   private view?: vscode.WebviewView;
   private abort?: AbortController;
+  private session: StoredSession | undefined;
 
-  constructor(private extUri: vscode.Uri, private agent: Agent, private index: SolutionIndex, private mcp?: McpManager) {
+  constructor(
+    private extUri: vscode.Uri,
+    private agent: Agent,
+    private index: SolutionIndex,
+    private sessions: SessionStore,
+    private mcp?: McpManager
+  ) {
     index.onDidChange(() => this.postStatus());
     mcp?.onDidChange(() => this.postStatus());
   }
@@ -27,6 +35,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         case 'send': return this.send(msg.text);
         case 'stop': this.abort?.abort(); return;
         case 'newChat': return this.newChat();
+        case 'history': return this.pickSession();
         case 'reindex': return vscode.commands.executeCommand('codix.reindex');
         case 'mcp': return vscode.commands.executeCommand('codix.mcpServers');
         case 'mcpPrompt': return vscode.commands.executeCommand('codix.mcpPrompt');
@@ -36,15 +45,44 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           return;
         }
         case 'copy': await vscode.env.clipboard.writeText(msg.code); return;
-        case 'ready': this.postStatus(); return;
+        case 'ready':
+          await this.ensureSession();
+          this.postStatus();
+          return;
       }
     });
   }
 
-  newChat() {
+  async newChat() {
     this.abort?.abort();
     this.agent.reset();
+    this.session = await this.sessions.create();
     this.post({ type: 'clear' });
+  }
+
+  async pickSession() {
+    const items = this.sessions.list().map((s) => ({
+      label: s.title,
+      description: new Date(s.updatedAt).toLocaleString(),
+      session: s
+    }));
+    if (!items.length) {
+      vscode.window.showInformationMessage('No saved Codix chats yet.');
+      return;
+    }
+    const pick = await vscode.window.showQuickPick(items, { placeHolder: 'Open a previous Codix chat' });
+    if (!pick) return;
+    this.abort?.abort();
+    this.session = pick.session;
+    this.agent.loadHistory(pick.session.messages);
+    await this.sessions.save(pick.session);
+    await vscode.commands.executeCommand('codix.chat.focus');
+    this.post({
+      type: 'restore',
+      messages: pick.session.messages
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .map((m) => ({ role: m.role, text: m.content ?? '' }))
+    });
   }
 
   async askAboutSelection() {
@@ -58,6 +96,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.post({ type: 'prefill', text: `In ${rel} lines ${sel.start.line + 1}-${sel.end.line + 1}:\n\`\`\`\n${code}\n\`\`\`\n` });
   }
 
+  private async ensureSession() {
+    if (this.session) return;
+    const id = this.sessions.activeId();
+    this.session = (id && this.sessions.get(id)) || (await this.sessions.create());
+    this.agent.loadHistory(this.session.messages);
+  }
+
+  private async persist() {
+    if (!this.session) return;
+    const msgs = this.agent.getHistory();
+    const firstUser = msgs.find((m) => m.role === 'user' && m.content);
+    this.session.messages = msgs;
+    this.session.title = (firstUser?.content ?? 'New chat').replace(/\s+/g, ' ').slice(0, 72);
+    this.session.updatedAt = Date.now();
+    await this.sessions.save(this.session);
+  }
+
   private post(msg: unknown) { this.view?.webview.postMessage(msg); }
 
   private postStatus() {
@@ -67,6 +122,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   private async send(text: string) {
     if (!text.trim()) return;
+    await this.ensureSession();
     this.abort?.abort();
     const abort = (this.abort = new AbortController());
     this.post({ type: 'user', text });
@@ -83,6 +139,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.post({ type: 'error', text: e?.message ?? String(e) });
     } finally {
       this.post({ type: 'assistantEnd' });
+      await this.persist();
     }
   }
 
@@ -95,7 +152,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 <link rel="stylesheet" href="${css}"></head>
 <body>
   <div id="toolbar"><span id="status">Indexing…</span>
-    <span><button id="mcpPrompt" title="Insert MCP prompt">/</button><button id="mcp" title="MCP servers">⚡</button><button id="reindex" title="Re-index solution">⟳</button><button id="new" title="New chat">＋</button></span></div>
+    <span>
+      <button id="history" title="Chat history">☰</button>
+      <button id="mcpPrompt" title="Insert MCP prompt">/</button>
+      <button id="mcp" title="MCP servers">⚡</button>
+      <button id="reindex" title="Re-index solution">⟳</button>
+      <button id="new" title="New chat">＋</button>
+    </span></div>
   <div id="messages"><div class="empty">Ask anything about your solution, or ask for a change.<br><br>Try: “Explain how authentication flows through the solution” or “Add logging to every controller.”</div></div>
   <div id="inputRow">
     <textarea id="input" rows="3" placeholder="Ask about the solution… (Enter to send, Shift+Enter for newline)"></textarea>

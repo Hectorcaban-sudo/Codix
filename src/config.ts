@@ -33,6 +33,11 @@ export interface AgentConfig {
 }
 
 export const SECRET_API_KEY = 'codix.apiKey';
+export const SECRET_PFX_PASSPHRASE = 'codix.pfxPassphrase';
+
+const DEFAULT_INCLUDES = [
+  '**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,cs,vb,fs,py,go,rs,java,kt,swift,sql,yml,yaml,xml,props,targets,sln,csproj,fsproj,vbproj,toml,gradle}'
+];
 
 export function getConfig(): AgentConfig {
   const c = vscode.workspace.getConfiguration('codix');
@@ -59,11 +64,11 @@ export function getConfig(): AgentConfig {
     },
     authHeaderName: c.get<string>('authHeaderName') ?? 'Authorization',
     authHeaderPrefix: c.get<string>('authHeaderPrefix') ?? 'Bearer ',
-    includeGlobs: c.get<string[]>('includeGlobs') ?? ['**/*'],
+    includeGlobs: c.get<string[]>('includeGlobs') ?? DEFAULT_INCLUDES,
     excludeGlobs: c.get<string[]>('excludeGlobs') ?? [],
     maxFileSizeKb: c.get<number>('maxFileSizeKb') ?? 256,
     maxFiles: c.get<number>('maxFiles') ?? 20000,
-    solutionContextBudget: c.get<number>('solutionContextBudget') ?? 0.6,
+    solutionContextBudget: c.get<number>('solutionContextBudget') ?? 0.45,
     maxAgentSteps: c.get<number>('maxAgentSteps') ?? 25,
     autoApplyEdits: c.get<boolean>('autoApplyEdits') ?? false,
     allowTerminalCommands: c.get<boolean>('allowTerminalCommands') ?? false,
@@ -72,12 +77,13 @@ export function getConfig(): AgentConfig {
   };
 }
 
-/** Replaces ${env:NAME}, ${secret:apiKey} and ${workspaceFolder} in a string. */
-export function interpolate(value: string, apiKey: string | undefined): string {
+/** Replaces ${env:NAME}, ${secret:apiKey}, ${secret:pfxPassphrase} and ${workspaceFolder}. */
+export function interpolate(value: string, apiKey: string | undefined, pfxPass?: string): string {
   const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
   return value
     .replace(/\$\{env:([^}]+)\}/g, (_, name) => process.env[name] ?? '')
     .replace(/\$\{secret:apiKey\}/g, apiKey ?? '')
+    .replace(/\$\{secret:pfxPassphrase\}/g, pfxPass ?? '')
     .replace(/\$\{workspaceFolder\}/g, ws)
     .replace(/^~(?=[\\/])/, process.env.HOME ?? process.env.USERPROFILE ?? '~');
 }

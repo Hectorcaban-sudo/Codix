@@ -3,10 +3,10 @@ import * as path from 'path';
 import { AgentConfig } from './config';
 
 export interface IndexedFile {
-  rel: string;          // workspace-relative path with forward slashes
+  rel: string;
   uri: vscode.Uri;
   size: number;
-  content?: string;     // undefined if too large or binary
+  content?: string;
   tokens: number;
   skippedReason?: string;
 }
@@ -25,12 +25,8 @@ const BINARY_EXT = new Set([
 
 const PRIORITY_FILES = /(\.sln|\.slnx|\.csproj|\.vbproj|\.fsproj|\.props|\.targets|package\.json|tsconfig\.json|pom\.xml|build\.gradle|pyproject\.toml|requirements\.txt|go\.mod|Cargo\.toml|README\.md|appsettings\.json|Program\.cs|Startup\.cs)$/i;
 
-export const estimateTokens = (s: string) => Math.ceil(s.length / 3.5);
+export const estimateTokens = (s: string) => Math.ceil(s.length / 4);
 
-/**
- * Indexes every text file in the workspace ("the whole solution") into memory,
- * keeps it fresh with a file watcher, and builds context for the model.
- */
 export class SolutionIndex implements vscode.Disposable {
   private files = new Map<string, IndexedFile>();
   private projects: ProjectInfo[] = [];
@@ -138,7 +134,6 @@ export class SolutionIndex implements vscode.Disposable {
     this.watcher.onDidDelete((u) => { this.files.delete(this.relPath(u)); this._onDidChange.fire(); });
   }
 
-  /** Reads .sln / project files to describe the solution structure. */
   private async parseProjects() {
     this.projects = [];
     for (const f of this.files.values()) {
@@ -158,7 +153,6 @@ export class SolutionIndex implements vscode.Disposable {
         this.projects.push({ name: path.posix.dirname(f.rel) || '(root)', path: f.rel, kind: path.basename(f.rel) });
       }
     }
-    // Standalone project files not referenced by a .sln
     const known = new Set(this.projects.map((p) => p.path));
     for (const f of this.files.values()) {
       if (/\.(cs|vb|fs)proj$/i.test(f.rel) && !known.has(f.rel)) {
@@ -167,7 +161,6 @@ export class SolutionIndex implements vscode.Disposable {
     }
   }
 
-  /** Directory tree of every indexed file. */
   tree(maxLines = 4000): string {
     const paths = [...this.files.keys()].sort();
     const lines: string[] = [];
@@ -192,13 +185,7 @@ export class SolutionIndex implements vscode.Disposable {
     return `Files indexed: ${this.files.size}, ~${this.totalTokens.toLocaleString()} tokens of source.\n\nProjects:\n${proj}\n\nFile tree:\n${this.tree()}`;
   }
 
-  /**
-   * Builds the preloaded "whole solution" context. If the solution fits in
-   * the budget, every file is included verbatim. Otherwise files are ranked
-   * (project/config files, open editors, relevance to the question) and
-   * packed until the budget is hit; the rest stay available through tools.
-   */
-  buildSolutionContext(budgetTokens: number, query: string, pinned: string[] = []): { text: string; included: number; omitted: number } {
+  buildSolutionContext(budgetTokens: number, query: string, pinned: string[] = []): { text: string; included: number; omitted: number; paths: string[] } {
     const all = [...this.files.values()].filter((f) => f.content !== undefined);
     const terms = tokenizeQuery(query);
     const openDocs = new Set(vscode.window.visibleTextEditors.map((e) => this.relPath(e.document.uri)));
@@ -218,7 +205,7 @@ export class SolutionIndex implements vscode.Disposable {
           s += Math.min(hits, 50) * 4;
         }
       }
-      s -= f.tokens / 2000; // slight preference for smaller files
+      s -= f.tokens / 2000;
       return s;
     };
 
@@ -226,6 +213,7 @@ export class SolutionIndex implements vscode.Disposable {
     const ordered = total <= budgetTokens ? all.sort((a, b) => a.rel.localeCompare(b.rel)) : all.sort((a, b) => score(b) - score(a));
 
     const parts: string[] = [];
+    const paths: string[] = [];
     let used = 0;
     let included = 0;
     for (const f of ordered) {
@@ -233,10 +221,11 @@ export class SolutionIndex implements vscode.Disposable {
       const t = f.tokens + 15;
       if (used + t > budgetTokens) continue;
       parts.push(block);
+      paths.push(f.rel);
       used += t;
       included++;
     }
-    return { text: parts.join('\n\n'), included, omitted: all.length - included };
+    return { text: parts.join('\n\n'), included, omitted: all.length - included, paths };
   }
 
   get(rel: string): IndexedFile | undefined {

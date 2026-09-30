@@ -16,8 +16,8 @@ Codix is a Continue-style AI coding agent for VS Code that **reads your whole so
 ```bash
 npm install
 npm run compile
-npm run package          # produces codix-0.1.0.vsix
-code --install-extension codix-0.1.0.vsix
+npm run package          # produces codix-0.3.0.vsix
+code --install-extension codix-0.3.0.vsix
 ```
 
 Or open the folder in VS Code and press **F5** to run it in an Extension Development Host.
@@ -144,6 +144,14 @@ In trusted workspaces the extension also reads **`.vscode/mcp.json`** (VS Code f
 | `useNativeTools` | true | Turn off if your server/model doesn't support OpenAI `tools`; a text-based tool protocol is used instead. |
 | `systemPromptExtra` | "" | Team conventions to add to every request. |
 
+
+## Chat sessions and models
+
+- **New Chat** (`codix.newChat`) always registers, even if MCP setup fails, so the title-bar + button should not show "command not found".
+- Chats persist across reloads (up to 50). Use the ☰ toolbar button or **Codix: Chat History**.
+- **Codix: Select Model** lists `/v1/models` on your server and writes `codix.model`.
+- **Codix: Set PFX Passphrase** stores the passphrase in SecretStorage. Reference it as `${secret:pfxPassphrase}` in `requestOptions`.
+
 ## Troubleshooting
 
 | Error | Fix |
@@ -153,6 +161,7 @@ In trusted workspaces the extension also reads **`.vscode/mcp.json`** (VS Code f
 | `bad decrypt` | Wrong key/PFX passphrase. |
 | HTTP 401/403 | Check header names/values; confirm `${env:…}` variables exist in the environment VS Code was launched from. |
 | HTTP 400 mentioning `tools` | Set `useNativeTools` to `false`. |
+| `command 'codix.newChat' not found` | Extension did not activate. Run `npm run compile`, then F5. Check Help → Toggle Developer Tools for the activation exception. |
 
 ## Project layout
 
@@ -167,5 +176,6 @@ src/
   tls.ts              shared header + CA + client-certificate handling
   agent.ts            tool-calling loop, context/history budgeting
   chatViewProvider.ts sidebar webview bridge
+  sessionStore.ts      persisted chat threads
 media/                webview UI (main.js, main.css, icon.svg)
 ```
