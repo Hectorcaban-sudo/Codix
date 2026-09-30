@@ -2,7 +2,7 @@
   "name": "codix",
   "displayName": "Codix",
   "description": "Codix: AI coding agent for VS Code that reads your whole solution. Works with internal OpenAI-compatible servers (custom headers + client certificates) and MCP servers.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "internal",
   "engines": {
     "vscode": "^1.85.0"

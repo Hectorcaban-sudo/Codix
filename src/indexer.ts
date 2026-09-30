@@ -233,6 +233,25 @@ export class SolutionIndex implements vscode.Disposable {
     return this.files.get(norm) ?? [...this.files.values()].find((f) => f.rel.endsWith('/' + norm));
   }
 
+  filesUnder(folder: string): IndexedFile[] {
+    const prefix = folder.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+    if (!prefix) return this.allFiles;
+    return this.allFiles.filter((f) => f.rel === prefix || f.rel.startsWith(prefix + '/'));
+  }
+
+  folders(): string[] {
+    const set = new Set<string>();
+    for (const f of this.files.keys()) {
+      const parts = f.split('/');
+      let acc = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        acc = acc ? acc + '/' + parts[i] : parts[i];
+        set.add(acc);
+      }
+    }
+    return [...set].sort();
+  }
+
   search(pattern: string, isRegex: boolean, fileGlob?: string, maxResults = 200): string {
     let rx: RegExp;
     try {

@@ -120,3 +120,40 @@ code {
   cursor: pointer;
 }
 #send.stop { background: var(--vscode-errorForeground); }
+#composer { position: relative; }
+#mentions {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--vscode-editorSuggestWidget-background, var(--vscode-editorWidget-background));
+  border: 1px solid var(--vscode-editorSuggestWidget-border, var(--vscode-panel-border));
+  border-radius: 6px;
+  z-index: 5;
+}
+.mention-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+.mention-item span { opacity: 0.65; font-size: 11px; }
+.mention-item.active, .mention-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.mention {
+  color: var(--vscode-textLink-foreground);
+  background: color-mix(in srgb, var(--vscode-textLink-foreground) 16%, transparent);
+  border-radius: 4px;
+  padding: 0 3px;
+}

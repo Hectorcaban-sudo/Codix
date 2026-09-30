@@ -16,7 +16,8 @@
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
-      .replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g, '$1<em>$2</em>');
+      .replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g, '$1<em>$2</em>')
+      .replace(/@(workspace|file|folder|selection)(?::[^\s]+)?/g, '<span class="mention">$&</span>');
   }
 
   // Small markdown renderer: fenced code, headings, lists, paragraphs.
@@ -91,18 +92,92 @@
 
   function send() {
     if (busy) { vscode.postMessage({ type: 'stop' }); return; }
+    hideMentions();
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
     vscode.postMessage({ type: 'send', text });
   }
 
+  const mentionBox = $('mentions');
+  let mentionState = null; // { start, end }
+  let mentionItems = [];
+  let mentionIdx = 0;
+
+  function hideMentions() {
+    if (mentionBox) { mentionBox.hidden = true; mentionBox.innerHTML = ''; }
+    mentionState = null;
+    mentionItems = [];
+  }
+
+  function renderMentions() {
+    if (!mentionBox) return;
+    if (!mentionItems.length) { hideMentions(); return; }
+    mentionBox.hidden = false;
+    mentionBox.innerHTML = mentionItems.map((it, i) =>
+      `<button type="button" class="mention-item${i === mentionIdx ? ' active' : ''}" data-i="${i}"><strong>${esc(it.label)}</strong><span>${esc(it.detail || '')}</span></button>`
+    ).join('');
+  }
+
+  function insertAt(start, end, text) {
+    const v = input.value;
+    input.value = v.slice(0, start) + text + v.slice(end);
+    const pos = start + text.length;
+    input.setSelectionRange(pos, pos);
+    input.focus();
+  }
+
+  function applyMention(item) {
+    if (!mentionState || !item) return;
+    insertAt(mentionState.start, mentionState.end, item.insert + ' ');
+    hideMentions();
+  }
+
+  function currentMention() {
+    const pos = input.selectionStart;
+    const before = input.value.slice(0, pos);
+    const m = /(^|\s)@([A-Za-z0-9_:\-./]*)$/.exec(before);
+    if (!m) return null;
+    const token = m[2];
+    const start = pos - token.length - 1;
+    const colon = token.indexOf(':');
+    const prefix = (colon >= 0 ? token.slice(0, colon) : token).toLowerCase();
+    const filter = colon >= 0 ? token.slice(colon + 1) : token;
+    return { start, end: pos, prefix, filter, token };
+  }
+
+  function queryMentions() {
+    const cur = currentMention();
+    if (!cur) { hideMentions(); return; }
+    mentionState = { start: cur.start, end: cur.end };
+    vscode.postMessage({ type: 'mentionQuery', prefix: cur.prefix, filter: cur.filter });
+  }
+
   sendBtn.addEventListener('click', send);
   input.addEventListener('keydown', (e) => {
+    if (mentionState && mentionItems.length) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); mentionIdx = (mentionIdx + 1) % mentionItems.length; renderMentions(); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); mentionIdx = (mentionIdx - 1 + mentionItems.length) % mentionItems.length; renderMentions(); return; }
+      if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); applyMention(mentionItems[mentionIdx]); return; }
+      if (e.key === 'Escape') { hideMentions(); return; }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
+  input.addEventListener('input', queryMentions);
+  if (mentionBox) {
+    mentionBox.addEventListener('mousedown', (e) => {
+      const btn = e.target.closest('[data-i]');
+      if (!btn) return;
+      e.preventDefault();
+      applyMention(mentionItems[Number(btn.dataset.i)]);
+    });
+  }
   $('new').addEventListener('click', () => vscode.postMessage({ type: 'newChat' }));
   const hist = $('history'); if (hist) hist.addEventListener('click', () => vscode.postMessage({ type: 'history' }));
+  const mentionBtn = $('mention'); if (mentionBtn) mentionBtn.addEventListener('click', () => {
+    insertAt(input.selectionStart, input.selectionEnd, '@');
+    queryMentions();
+  });
   $('mcp').addEventListener('click', () => vscode.postMessage({ type: 'mcp' }));
   $('mcpPrompt').addEventListener('click', () => vscode.postMessage({ type: 'mcpPrompt' }));
   $('reindex').addEventListener('click', () => vscode.postMessage({ type: 'reindex' }));
@@ -129,6 +204,14 @@
         if (!messages.children.length) messages.innerHTML = '<div class="empty">Empty chat.</div>';
         break;
       case 'prefill': input.value = m.text; input.focus(); break;
+      case 'insertMention':
+        insertAt(input.selectionStart, input.selectionEnd, m.text);
+        break;
+      case 'mentionSuggestions':
+        mentionItems = m.items || [];
+        mentionIdx = 0;
+        renderMentions();
+        break;
       case 'user': addUser(m.text); break;
       case 'assistantStart': setBusy(true); startAssistant(); break;
       case 'contextInfo': if (current) current.el.querySelector('.ctx').textContent = m.text; break;

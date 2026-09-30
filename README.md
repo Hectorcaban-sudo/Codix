@@ -9,7 +9,7 @@ Codix is a Continue-style AI coding agent for VS Code that **reads your whole so
   - If it's bigger, the most relevant files (open editors, project/config files, files matching the question) are loaded in full, and the agent reaches the rest with `search_code` / `read_file`. The chat shows which mode is active.
 - **Agent loop with tools:** `list_files`, `read_file`, `search_code`, `edit_file` (exact snippet replace), `write_file`, `get_diagnostics` (VS Code Problems), and optionally `run_command` (e.g. `dotnet build`).
 - **Safe edits.** Every change opens a diff (current ↔ proposed) and waits for Accept / Reject, unless `autoApplyEdits` is on.
-- Sidebar chat with streaming, Stop button, code blocks with Copy / Insert, and **Ask About Selection** (`Ctrl+Shift+L`).
+- Sidebar chat with streaming, Stop button, code blocks with Copy / Insert, **@ mentions** (`@file`, `@folder`, `@workspace`, `@selection`), and **Ask About Selection** (`Ctrl+Shift+L`).
 
 ## Install
 
@@ -144,6 +144,21 @@ In trusted workspaces the extension also reads **`.vscode/mcp.json`** (VS Code f
 | `useNativeTools` | true | Turn off if your server/model doesn't support OpenAI `tools`; a text-based tool protocol is used instead. |
 | `systemPromptExtra` | "" | Team conventions to add to every request. |
 
+
+
+## @ mentions
+
+Type `@` in the chat box (or click **@**) to attach context the way GitHub Copilot Chat does.
+
+| Tag | Meaning |
+|---|---|
+| `@workspace` | Whole indexed solution. |
+| `@file` | The active editor. Ask “What does this file do?” |
+| `@file:src/app.ts` | That file specifically. Autocomplete after `@file:`. |
+| `@folder` / `@folder:src` | Every indexed file under a folder. |
+| `@selection` | The current editor selection (also `Ctrl+Shift+L`). |
+
+Tagged files are pinned into the model context so the question is answered against those paths first.
 
 ## Chat sessions and models
 

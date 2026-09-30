@@ -4,6 +4,7 @@ import { ChatMessage, LlmClient, ToolCall } from './llmClient';
 import { ProposedContentProvider, runTool, toolSchemas } from './tools';
 import { McpManager } from './mcpManager';
 import { ToolSchema } from './llmClient';
+import { Mention } from './mentions';
 
 export interface AgentEvents {
   onToken: (t: string) => void;
@@ -27,6 +28,7 @@ When you are finished, answer normally without a tool block.`;
 export class Agent {
   private history: ChatMessage[] = [];
   private pinned: string[] = [];
+  private mentionFocus = false;
 
   constructor(
     private index: SolutionIndex,
@@ -40,8 +42,16 @@ export class Agent {
     return [...toolSchemas(cfg), ...(this.mcp?.toolSchemas() ?? [])];
   }
 
-  reset() { this.history = []; this.pinned = []; }
+  reset() { this.history = []; this.pinned = []; this.mentionFocus = false; }
   pin(paths: string[]) { this.pinned.push(...paths); }
+  applyMentions(mentions: Mention[]) {
+    this.mentionFocus = mentions.some((m) => m.kind === 'file' || m.kind === 'folder' || m.kind === 'selection');
+    for (const m of mentions) {
+      if (m.kind === 'file' && m.path) this.pin([m.path]);
+      if (m.kind === 'folder' && m.path) this.pin(this.index.filesUnder(m.path).map((f) => f.rel));
+      if (m.kind === 'workspace') this.mentionFocus = false;
+    }
+  }
   getHistory(): ChatMessage[] { return this.history; }
   loadHistory(messages: ChatMessage[]) { this.history = messages; this.pinned = []; }
 
@@ -58,10 +68,14 @@ export class Agent {
         : `Loaded ${ctx.included} relevant files${names ? ` (${names}${ctx.included > 12 ? ', …' : ''})` : ''}; ${ctx.omitted} more via tools`
     );
 
+    const mentionNote = this.pinned.length
+      ? `The user tagged these paths — treat them as the primary subject of the question:\n${[...new Set(this.pinned)].slice(0, 40).map((p) => `- ${p}`).join('\n')}`
+      : '';
+
     return [
       `You are Codix, an expert software engineer working inside the user's VS Code workspace.`,
       `You have the user's entire solution indexed. Its structure and ${ctx.omitted === 0 ? 'the full source of every file' : 'the full source of the most relevant files'} are below.`,
-      ctx.omitted > 0 ? `${ctx.omitted} files are not shown in full; use search_code and read_file to inspect them before making claims about them.` : '',
+      mentionNote,
       `Guidelines:
 - Ground every answer in the actual code. Cite files as path:line.
 - Before editing, make sure you understand every caller/usage affected (use search_code across the solution).
