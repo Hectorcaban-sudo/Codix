@@ -178,6 +178,7 @@
     insertAt(input.selectionStart, input.selectionEnd, '@');
     queryMentions();
   });
+  const settingsBtn = $('settings'); if (settingsBtn) settingsBtn.addEventListener('click', () => vscode.postMessage({ type: 'settings' }));
   $('mcp').addEventListener('click', () => vscode.postMessage({ type: 'mcp' }));
   $('mcpPrompt').addEventListener('click', () => vscode.postMessage({ type: 'mcpPrompt' }));
   $('reindex').addEventListener('click', () => vscode.postMessage({ type: 'reindex' }));

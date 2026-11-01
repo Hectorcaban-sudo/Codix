@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as zlib from 'zlib';
 import { SolutionIndex } from './indexer';
 import { ToolSchema } from './llmClient';
 import { AgentConfig } from './config';
@@ -102,6 +105,21 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       name: 'get_diagnostics',
       description: 'Get current compiler/linter errors and warnings from VS Code, optionally for one file.',
       parameters: { type: 'object', properties: { path: { type: 'string' } } }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_zip',
+      description: 'Create a zip archive of a folder (or the whole workspace) and save it in the workspace. Use after writing a new solution so the user can download it.',
+      parameters: {
+        type: 'object',
+        properties: {
+          source: { type: 'string', description: 'Folder to zip, relative to workspace. Empty or "." for the whole workspace.' },
+          output: { type: 'string', description: 'Output zip path relative to workspace, e.g. "modern-ui.zip".' }
+        },
+        required: ['output']
+      }
     }
   },
   {
@@ -243,6 +261,31 @@ export async function runTool(name: string, rawArgs: string, ctx: ToolContext): 
           }
         }
         return out.length ? out.slice(0, 300).join('\n') : 'No errors or warnings.';
+      }
+
+      case 'create_zip': {
+        const outRel = String(args.output || 'solution.zip').replace(/\\/g, '/');
+        const srcRel = String(args.source || '.').replace(/\\/g, '/');
+        const outUri = resolvePath(ctx, outRel);
+        const srcUri = srcRel === '.' || srcRel === '' ? rootUri() : resolvePath(ctx, srcRel);
+        const ok = await vscode.window.showInformationMessage(
+          `Codix wants to create ${outRel} from ${srcRel}`,
+          { modal: false },
+          'Create',
+          'Cancel'
+        );
+        if (ok !== 'Create') return 'User declined the zip.';
+        const isWin = process.platform === 'win32';
+        const cmd = isWin
+          ? `powershell -NoProfile -Command "Compress-Archive -Path '${srcUri.fsPath}\\*' -DestinationPath '${outUri.fsPath}' -Force"`
+          : `zip -r '${outUri.fsPath}' .`;
+        const cwd = isWin ? undefined : srcUri.fsPath;
+        return await new Promise<string>((resolve) => {
+          cp.exec(cmd, { cwd, timeout: 5 * 60_000 }, (err, stdout, stderr) => {
+            const msg = `${stdout}\n${stderr}`.trim();
+            resolve(err ? `Zip failed: ${msg || err.message}` : `Created ${outRel}. ${msg}`);
+          });
+        });
       }
 
       case 'run_command': {

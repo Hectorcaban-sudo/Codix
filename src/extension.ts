@@ -6,6 +6,7 @@ import { SolutionIndex } from './indexer';
 import { LlmClient } from './llmClient';
 import { McpManager } from './mcpManager';
 import { SessionStore } from './sessionStore';
+import { SettingsPanel } from './settingsPanel';
 import { PROPOSED_SCHEME, ProposedContentProvider } from './tools';
 
 const COMMANDS = [
@@ -18,6 +19,7 @@ const COMMANDS = [
   'codix.askAboutSelection',
   'codix.selectModel',
   'codix.showHistory',
+  'codix.openSettings',
   'codix.mcpServers',
   'codix.mcpReconnect',
   'codix.mcpPrompt'
@@ -58,6 +60,7 @@ async function start(context: vscode.ExtensionContext, status: vscode.StatusBarI
   const index = new SolutionIndex(getConfig);
   const proposed = new ProposedContentProvider();
   const sessions = new SessionStore(context);
+  const settings = new SettingsPanel(context);
 
   const getClient = async () =>
     new LlmClient(getConfig(), await context.secrets.get(SECRET_API_KEY), await context.secrets.get(SECRET_PFX_PASSPHRASE));
@@ -93,6 +96,7 @@ async function start(context: vscode.ExtensionContext, status: vscode.StatusBarI
     vscode.commands.registerCommand('codix.newChat', () => chat.newChat()),
     vscode.commands.registerCommand('codix.askAboutSelection', () => chat.askAboutSelection()),
     vscode.commands.registerCommand('codix.showHistory', () => chat.pickSession()),
+    vscode.commands.registerCommand('codix.openSettings', () => settings.open()),
     vscode.commands.registerCommand('codix.mcpServers', () => mcp.showServers()),
     vscode.commands.registerCommand('codix.mcpReconnect', () => mcp.connectAll()),
     vscode.commands.registerCommand('codix.mcpPrompt', async () => {
@@ -106,7 +110,7 @@ async function start(context: vscode.ExtensionContext, status: vscode.StatusBarI
 
     vscode.commands.registerCommand('codix.setApiKey', async () => {
       const key = await vscode.window.showInputBox({
-        prompt: 'API key / token for your OpenAI server (stored in VS Code SecretStorage)',
+        prompt: 'API key for the GenAI gateway (stored in VS Code SecretStorage). Sent as the apikey header.',
         password: true,
         ignoreFocusOut: true
       });
@@ -143,24 +147,7 @@ async function start(context: vscode.ExtensionContext, status: vscode.StatusBarI
     }),
 
     vscode.commands.registerCommand('codix.selectModel', async () => {
-      try {
-        const client = await getClient();
-        const models = await client.listModels();
-        if (!models.length) {
-          vscode.window.showWarningMessage('Server returned no models from /models.');
-          return;
-        }
-        const pick = await vscode.window.showQuickPick(
-          models.map((id) => ({ label: id, description: id === getConfig().model ? 'current' : undefined })),
-          { placeHolder: 'Select a model' }
-        );
-        if (pick) {
-          await vscode.workspace.getConfiguration('codix').update('model', pick.label, vscode.ConfigurationTarget.Global);
-          vscode.window.showInformationMessage(`Codix model: ${pick.label}`);
-        }
-      } catch (e: any) {
-        vscode.window.showErrorMessage(`Could not list models: ${e.message}`);
-      }
+      settings.open();
     }),
 
     vscode.workspace.onDidChangeConfiguration((e) => {

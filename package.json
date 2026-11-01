@@ -2,7 +2,7 @@
   "name": "codix",
   "displayName": "Codix",
   "description": "Codix: AI coding agent for VS Code that reads your whole solution. Works with internal OpenAI-compatible servers (custom headers + client certificates) and MCP servers.",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "publisher": "internal",
   "engines": {
     "vscode": "^1.85.0"
@@ -24,7 +24,7 @@
     "onCommand:codix.newChat",
     "onCommand:codix.askAboutSelection",
     "onCommand:codix.selectModel",
-    "onCommand:codix.showHistory",
+    "onCommand:codix.openSettings",
     "onCommand:codix.mcpServers",
     "onCommand:codix.mcpReconnect",
     "onCommand:codix.mcpPrompt"
@@ -95,10 +95,10 @@
         "title": "Codix: Select Model"
       },
       {
-        "command": "codix.showHistory",
-        "title": "Codix: Chat History",
-        "icon": "$(history)"
-      }
+        "command": "codix.openSettings",
+        "title": "Codix: Open Settings",
+        "icon": "$(gear)"
+      },
     ],
     "menus": {
       "view/title": [
@@ -175,13 +175,13 @@
         },
         "codix.authHeaderName": {
           "type": "string",
-          "default": "Authorization",
-          "description": "Header used for the stored API key. Set to empty to send no key header."
+          "default": "apikey",
+          "description": "Header used for the stored API key. For the BAE GenAI gateway use apikey. Set to empty to send no key header."
         },
         "codix.authHeaderPrefix": {
           "type": "string",
-          "default": "Bearer ",
-          "description": "Prefix placed before the API key in the auth header."
+          "default": "",
+          "description": "Prefix placed before the API key. Leave empty for apikey-style gateways."
         },
         "codix.includeGlobs": {
           "type": "array",

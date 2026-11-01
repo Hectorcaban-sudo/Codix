@@ -39,6 +39,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         case 'stop': this.abort?.abort(); return;
         case 'newChat': return this.newChat();
         case 'history': return this.pickSession();
+        case 'settings': return vscode.commands.executeCommand('codix.openSettings');
         case 'reindex': return vscode.commands.executeCommand('codix.reindex');
         case 'mcp': return vscode.commands.executeCommand('codix.mcpServers');
         case 'mcpPrompt': return vscode.commands.executeCommand('codix.mcpPrompt');
@@ -259,6 +260,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 <body>
   <div id="toolbar"><span id="status">Indexing…</span>
     <span>
+      <button id="settings" title="Settings">⚙</button>
       <button id="mention" title="Insert @ mention">@</button>
       <button id="history" title="Chat history">☰</button>
       <button id="mcpPrompt" title="Insert MCP prompt">/</button>

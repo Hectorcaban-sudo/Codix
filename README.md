@@ -146,7 +146,42 @@ In trusted workspaces the extension also reads **`.vscode/mcp.json`** (VS Code f
 
 
 
-## @ mentions
+## Settings from the chat
+
+Click the **⚙** button in the Codix sidebar (or run **Codix: Open Settings**). From that panel you can:
+
+- Set API base, model, auth header, and context window
+- **Upload a CA PEM** (stored in extension global storage and set as `requestOptions.caBundlePath`)
+- Set the API key (SecretStorage)
+- Test the connection
+- Pick a **BAE GenAI model** from the built-in catalog. Selecting one sets:
+  - `codix.model` to the model path (e.g. `/genai/Llama-3.3-70b`)
+  - `codix.apiBase` to `https://devmissionassist.api.us.baesystems.com/<url>/v1`
+  - auth header to `apikey` with an empty prefix (matches the internal example)
+
+Example matching the internal guide:
+
+```json
+{
+  "codix.apiBase": "https://devmissionassist.api.us.baesystems.com/bae-api-llama/v1",
+  "codix.model": "/genai/Llama-3.3-70b",
+  "codix.authHeaderName": "apikey",
+  "codix.authHeaderPrefix": "",
+  "codix.requestOptions": {
+    "caBundlePath": "C:/path/to/CA03_Base64_FullRootChain.pem"
+  }
+}
+```
+
+## Creating a zip of a converted solution
+
+Ask something like:
+
+> analyze this solution and convert it into a new modern interface and create a zip file for the solution
+
+The agent will read the workspace, write the new UI under a folder such as `modern-ui/`, then call the `create_zip` tool to produce a zip in the workspace.
+
+
 
 Type `@` in the chat box (or click **@**) to attach context the way GitHub Copilot Chat does.
 

@@ -81,7 +81,8 @@ export class Agent {
 - Before editing, make sure you understand every caller/usage affected (use search_code across the solution).
 - Make changes with edit_file (exact snippet replacement) or write_file (new files). Keep edits minimal and consistent with existing style.
 - After edits, call get_diagnostics to check for errors when relevant.
-- If a request is ambiguous, ask a short clarifying question instead of guessing.`,
+- If asked to convert a solution into a modern interface, analyze the existing UI/structure first, then write a new self-contained frontend (HTML/CSS/JS or the project's stack) under a clear folder such as modern-ui/.
+- When asked to create a zip, call create_zip with the output path after the files exist.`,
       this.mcp?.describe()
         ? `You also have tools from connected MCP servers (names start with "mcp__<server>__"). Use them when they are the right source (tickets, docs, databases, internal APIs, etc.). MCP calls may need user approval.\n${this.mcp.describe()}`
         : '',
